@@ -1,0 +1,35 @@
+{
+  "name": "blank-web-sdk",
+  "version": "0.0.1",
+  "description": "SDK for web applications created with Blank back-end",
+  "main": "./lib/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "patch": "npm version patch && npm run push",
+    "push": "git push origin master --follow-tags && npm publish",
+    "build": "./node_modules/.bin/webpack && ./node_modules/.bin/babel src --out-dir lib"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://kib357@github.com/getblank/blank-web-sdk.git"
+  },
+  "keywords": [
+    "Blank",
+    "websocket",
+    "crud",
+    "javascript"
+  ],
+  "author": "Evgeniy Kuvshinov & Evgeniy Ivakha",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/getblank/blank-web-sdk/issues"
+  },
+  "homepage": "https://github.com/getblank/blank-web-sdk#readme",
+  "devDependencies": {
+    "babel-cli": "^6.14.0",
+    "babel-core": "^6.14.0",
+    "babel-loader": "^6.2.5",
+    "babel-preset-es2015": "^6.14.0",
+    "webpack": "^2.1.0-beta.22"
+  }
+}
