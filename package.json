@@ -4,6 +4,7 @@
   "description": "SDK for web applications created with Blank back-end",
   "main": "./lib/index.js",
   "scripts": {
+    "prepublish": "rm -rf ./dist/* && rm -rf ./lib/* && npm run build",
     "test": "echo \"Error: no test specified\" && exit 1",
     "patch": "npm version patch && npm run push",
     "push": "git push origin master --follow-tags && npm publish",
