@@ -3,6 +3,8 @@
 // Wamp-one may be freely distributed under the MIT license.
 "use strict";
 
+import doubleApi from "../doubleApi";
+
 const msgTypes = {
     "WELCOME": 0,
     "PREFIX": 1,
@@ -92,8 +94,9 @@ export default class WampClient {
         if (!/^(wss?:\/\/).+/.test(serverUrl)) {
             throw new Error("Incorrect server url: " + serverUrl);
         }
+        let Client = typeof WebSocket === "undefined" ? require("ws") : WebSocket;
         this._serverUrl = serverUrl;
-        this._wsClient = new WebSocket(serverUrl);
+        this._wsClient = new Client(serverUrl);
         this._wsClient.onopen = this._wsOpenedHandler;
         this._wsClient.onclose = this._wsClosedHandler;
         this._wsClient.onmessage = this._wsMessageHandler;
@@ -103,7 +106,8 @@ export default class WampClient {
 
     close() {
         if (this._wsClient) {
-            this._wsClient.close(4000);
+            this._closedByApplication = true;
+            this._wsClient.close();
         }
     }
 
@@ -113,16 +117,26 @@ export default class WampClient {
      * @param callback - callback, который вызовется, когда придет ответ с сервера
      * @private
      */
-    call(url, callback) {
-        if (this._wsClient.readyState === wsStates.OPEN) {
-            let callId = ++this._callSequence;
-            this._callResponseHandlers[callId] = callback;
-            var callData = [(this._stringMsgTypes ? "CALL" : msgTypes.CALL), callId, url];
-            callData = callData.concat(Array.prototype.slice.call(arguments, 2));
-            this._wsClient.send(JSON.stringify(callData));
-        } else {
+    call(url) {
+        if (!url) {
+            throw new Error("invalid args: url");
+        }
+        if (this._wsClient.readyState !== wsStates.OPEN) {
             throw new Error("WebSocket not connected");
         }
+        let cb, promise, data = Array.prototype.slice.call(arguments, 1);
+        if (typeof data[data.length - 1] === "function") {
+            cb = data.pop();
+        }
+        ({ promise, cb } = doubleApi(cb));
+
+        let callId = ++this._callSequence;
+        this._callResponseHandlers[callId] = cb;
+        var callData = [(this._stringMsgTypes ? "CALL" : msgTypes.CALL), callId, url];
+        callData = callData.concat(data);
+        this._wsClient.send(JSON.stringify(callData));
+
+        return promise;
     }
 
     /**
@@ -268,39 +282,39 @@ export default class WampClient {
         }
     }
 
-    _wsOpenedHandler() {
-        var self = this;
-        if (self._heartBeat) {
-            self._startHeartbeat.call(self);
+    _wsOpenedHandler(e) {
+        if (this._heartBeat) {
+            this._startHeartbeat.call(this);
         }
-        if (typeof self._connectHandler === "function") {
-            self._connectHandler();
+        if (typeof this._connectHandler === "function") {
+            this._connectHandler();
         }
-        if (typeof self.onopen === "function") {
-            self.onopen();
+        if (typeof this.onopen === "function") {
+            this.onopen(e);
         }
     }
 
     _wsClosedHandler(closeEvent) {
-        var self = this;
-        self._eventHandlers = {};
-        self._subscribedHandlers = {};
-        self._subscribeErrorHandlers = {};
-        self._subUris = {};
-        self._callResponseHandlers = {};
-        self._callRequestHandlers = {};
-        self._heartBeatHandlers = {};
-        clearInterval(self._hbInterval);
-        if (closeEvent.code !== 4000) {
-            setTimeout(self._startReconnect.bind(self), helpers.getRandom(2, 4) * 1000);
+        clearInterval(this._hbInterval);
+        if (!this._closedByApplication) {
+            setTimeout(this._startReconnect.bind(this), helpers.getRandom(2, 4) * 1000);
         }
-        if (typeof self.onclose === "function") {
-            self.onclose();
+
+        this._closedByApplication = false;
+        this._eventHandlers = {};
+        this._subscribedHandlers = {};
+        this._subscribeErrorHandlers = {};
+        this._subUris = {};
+        this._callResponseHandlers = {};
+        this._callRequestHandlers = {};
+        this._heartBeatHandlers = {};
+        if (typeof this.onclose === "function") {
+            this.onclose(closeEvent);
         }
     }
 
     _wsErrorHandler(err) {
-        console.log(err);
+        console.error(err);
     }
 
     _startReconnect() {
