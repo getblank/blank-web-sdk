@@ -1,3 +1,3 @@
-import WampClient from "./client/wamp";
+import _WSClient from "./client/WSClient";
 
-export const WSClient = new WampClient();
+export const WSClient = _WSClient;

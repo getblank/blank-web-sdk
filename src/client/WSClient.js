@@ -1,8 +1,3 @@
-// Wamp-one wamp-client.js 1.0.2
-// (c) 2015 Samorukov Valentin, Kuvshinov Evgeniy
-// Wamp-one may be freely distributed under the MIT license.
-"use strict";
-
 import doubleApi from "../doubleApi";
 
 const msgTypes = {
@@ -33,11 +28,8 @@ const helpers = {
     },
 };
 
-export default class WampClient {
+export default class WSClient {
     constructor(heartBeat, stringMsgTypes) {
-        if (!(this instanceof WampClient)) {
-            return new WampClient(heartBeat);
-        }
         this._wsClient = null;
         this._heartBeat = heartBeat;
         this._stringMsgTypes = stringMsgTypes;
@@ -214,7 +206,7 @@ export default class WampClient {
         try {
             msg = JSON.parse(rawMsg.data);
         } catch (e) {
-            console.debug("WAMP: Invalid message JSON");
+            console.error("WSClient: Invalid message JSON");
             return;
         }
         let msgType = msg[0],

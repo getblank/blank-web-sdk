@@ -1,4 +1,4 @@
-const WampClient = require("../lib/client/wamp").default;
+const WSClient = require("../lib/client/WSClient").default;
 const assert = require("assert");
 const WS_PORT = 44189;
 
@@ -13,7 +13,7 @@ wss.on("connection", function connection(ws) {
 
     ws.send("something");
 });
-let client = new WampClient();
+let client = new WSClient();
 client.WebSocket = require("ws");
 
 describe("wamp", function () {
