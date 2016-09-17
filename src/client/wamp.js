@@ -94,7 +94,7 @@ export default class WampClient {
         if (!/^(wss?:\/\/).+/.test(serverUrl)) {
             throw new Error("Incorrect server url: " + serverUrl);
         }
-        let Client = typeof WebSocket === "undefined" ? require("ws") : WebSocket;
+        let Client = typeof WebSocket === "undefined" ? this.WebSocket : WebSocket;
         this._serverUrl = serverUrl;
         this._wsClient = new Client(serverUrl);
         this._wsClient.onopen = this._wsOpenedHandler;

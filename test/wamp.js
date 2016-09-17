@@ -14,6 +14,7 @@ wss.on("connection", function connection(ws) {
     ws.send("something");
 });
 let client = new WampClient();
+client.WebSocket = require("ws");
 
 describe("wamp", function () {
     before(function (done) {
