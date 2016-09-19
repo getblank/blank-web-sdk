@@ -64,6 +64,7 @@ export default class WSClient {
         //Public event handlers
         this.onclose = null;
         this.onopen = null;
+        this.onerror = null;
 
         Object.defineProperty(this, "state", {
             get: function () {
@@ -306,7 +307,11 @@ export default class WSClient {
     }
 
     _wsErrorHandler(err) {
-        console.error(err);
+        if (typeof this.onerror === "function") {
+            this.onerror(err);
+        } else {
+            console.error(err);
+        }
     }
 
     _startReconnect() {
