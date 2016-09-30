@@ -29,7 +29,7 @@ const helpers = {
 };
 
 export default class WSClient {
-    constructor(heartBeat, stringMsgTypes) {
+    constructor(heartBeat = true, stringMsgTypes = true) {
         this._wsClient = null;
         this._heartBeat = heartBeat;
         this._stringMsgTypes = stringMsgTypes;

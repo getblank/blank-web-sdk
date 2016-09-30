@@ -3,6 +3,7 @@ const webpack = require("webpack");
 
 module.exports = (options = {}) => ({
     entry: [
+        "whatwg-fetch",
         "./src/index.js",
     ],
     // devtool: options.dev ? "cheap-module-eval-source-map" : "hidden-source-map",

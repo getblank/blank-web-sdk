@@ -1,4 +1,4 @@
-export function decode(token, options = {}) {
+export function decodeToken(token, options = {}) {
     if (typeof token !== "string") {
         throw new Error("token must be a string");
     }
@@ -15,9 +15,22 @@ export function decode(token, options = {}) {
         const stringData = decodeURIComponent(encodedData);
         const data = JSON.parse(stringData);
         return data;
-        // this.__setUserData({ user: { "_id": data.userId }, key: data.key });
-        // client.connect();
     } catch (e) {
         throw new Error("invalid token specified: " + e.message);
     }
+}
+
+export function checkToken(token, serverUri = "") {
+    return fetch(`${serverUri}/check-jwt`)
+        .then(response => {
+            if (response.status >= 200 && response.status < 300) {
+                return response.json();
+            }
+        })
+        .then(data => {
+            if (data && data.valid) {
+                return true;
+            }
+            return false;
+        });
 }

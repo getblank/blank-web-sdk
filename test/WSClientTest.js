@@ -1,20 +1,21 @@
 const WSClient = require("../lib/client/WSClient").default;
 const assert = require("assert");
-const WS_PORT = 44189;
+const WS_PORT = 8080;
 
 //Test server
-var WebSocketServer = require("ws").Server
-    , wss = new WebSocketServer({ port: WS_PORT });
+// var WebSocketServer = require("ws").Server
+//     , wss = new WebSocketServer({ port: WS_PORT });
 
-wss.on("connection", function connection(ws) {
-    ws.on("message", function incoming(message) {
-        console.log("received: %s", message);
-    });
+// wss.on("connection", function connection(ws) {
+//     ws.on("message", function incoming(message) {
+//         console.log("received: %s", message);
+//     });
 
-    ws.send("something");
-});
+//     ws.send("something");
+// });
+
 let client = new WSClient();
-client.WebSocket = require("ws");
+// client.WebSocket = require("ws");
 
 describe("wamp", function () {
     before(function (done) {
