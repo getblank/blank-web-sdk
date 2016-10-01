@@ -19,6 +19,7 @@ export default class BlankClient extends EventEmitter {
         this.accessTokenProvider = new AccessTokenProvider(blankUri);
         this.accessTokenProvider.get()
             .then(token => {
+                this._accessToken = token;
                 if (token) {
                     this._ws ? this.__openWS() : this.__setState(CLIENT_STATES.ready);
                 } else {
@@ -63,7 +64,7 @@ export default class BlankClient extends EventEmitter {
     }
 
     signOut() {
-
+        this._wsClient.close();
     }
 
     __openWS() {
@@ -73,10 +74,6 @@ export default class BlankClient extends EventEmitter {
             (location.protocol === "https:" ? "wss:" : "ws:") + "//" + location.host) + location.pathname +
             `wamp?access_token=${encodeURIComponent(this._accessToken)}`;
         this._wsClient.open(uri);
-    }
-
-    closeWS() {
-        this._wsClient.close();
     }
 
     __checkAccessToken() {
@@ -112,10 +109,13 @@ export default class BlankClient extends EventEmitter {
     }
 
     __onWSOpen() {
+        console.log("WS CONNECTED");
         // this.emit("wsopen");
+        this.__setState(CLIENT_STATES.wsConnected);
     }
 
     __onWSError(e) {
+        console.log("WS ERROR:", e);
         // this.emit("wserror", e);
     }
 

@@ -49,6 +49,19 @@ describe("BlankClient", function () {
                 if (k === 2) { done(); }
             });
         });
+        it("should connect if valid token in LS", function (done) {
+            localStorage.setItem(TOKEN_LS_KEY, VALID_TOKEN);
+            const client = new BlankClient("http://localhost:8085");
+            client.on("init", () => {
+                assert.equal(client.state, CLIENT_STATES.wsConnecting);
+                client.on("change", (s, p) => {
+                    console.log("CHANGE:", s, p);
+                    assert.equal(client.state, CLIENT_STATES.wsConnected);
+                    client.signOut();
+                    done();
+                });
+            });
+        });
     });
     describe("signIn", function () {
         beforeEach(function () {

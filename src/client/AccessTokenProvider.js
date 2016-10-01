@@ -18,10 +18,11 @@ export default class AccessTokenProvider {
         switch (this.store) {
             case "ls":
                 token = localStorage.getItem(TOKEN_LS_KEY) || null;
-                cb(this.__validateToken(token));
+                cb(null, this.__validateToken(token));
                 break;
             case "iframe":
-                cb(null);
+                token = localStorage.getItem(TOKEN_LS_KEY) || null;
+                cb(null, this.__validateToken(token));
                 break;
         }
         return promise;
