@@ -34,35 +34,19 @@ describe("BlankClient", function () {
             const client = new BlankClient();
             assert.equal(CLIENT_STATES.authorization, client.state);
         });
-        it("should switch to 'notAuthorized' state after creation when no token", function (done) {
+        it("should switch to 'unauthorized' state after creation when no token", function (done) {
             let k = 0;
             const sameOriginClient = new BlankClient();
-            sameOriginClient.on("change", function () {
+            sameOriginClient.on("init", function () {
                 assert.equal(sameOriginClient.state, CLIENT_STATES.unauthorized);
                 k++;
                 if (k === 2) { done(); }
             });
             const crossOriginClient = new BlankClient("http://localhost:8085");
-            crossOriginClient.on("change", function () {
+            crossOriginClient.on("init", function () {
                 assert.equal(crossOriginClient.state, CLIENT_STATES.unauthorized);
                 k++;
                 if (k === 2) { done(); }
-            });
-        });
-        it("[SAME_ORIGIN] should load in 'http' state when valid access_token in localStorage", function (done) {
-            localStorage.setItem(TOKEN_LS_KEY, VALID_TOKEN);
-            const client = new BlankClient();
-            client.on("load", function () {
-                assert.equal(CLIENT_STATES.http, client.state);
-                done();
-            });
-        });
-        it("[SAME_ORIGIN] should load in 'offline' state when expired access_token in localStorage", function (done) {
-            localStorage.setItem(TOKEN_LS_KEY, EXPIRED_TOKEN);
-            const client = new BlankClient();
-            client.on("load", function () {
-                assert.equal(CLIENT_STATES.offline, client.state);
-                done();
             });
         });
     });
@@ -70,55 +54,35 @@ describe("BlankClient", function () {
         beforeEach(function () {
             localStorage.clear();
         });
-        it("should switch client state to 'signedIn' if success", function (done) {
+        it("should switch client state to 'wsConnecting' if success", function (done) {
             const client = new BlankClient();
-            client.on("load", () => {
-                assert.equal(CLIENT_STATES.offline, client.state);
+            client.on("init", () => {
+                assert.equal(client.state, CLIENT_STATES.unauthorized);
                 client.signIn("test", "ok").then(res => {
-                    assert.equal(CLIENT_STATES.signedIn, client.state);
+                    assert.equal(client.state, CLIENT_STATES.wsConnecting);
                     done();
                 });
             });
         });
-        it("should saves 'offline' client state if failure", function (done) {
+        it("should switch client state to 'signedIn' if success and ws turned off", function (done) {
+            const client = new BlankClient("", false);
+            client.on("init", () => {
+                assert.equal(client.state, CLIENT_STATES.unauthorized);
+                client.signIn("test", "ok").then(res => {
+                    assert.equal(client.state, CLIENT_STATES.ready);
+                    done();
+                });
+            });
+        });
+        it("should switch client state to 'unauthorized' if failure", function (done) {
             const client = new BlankClient();
-            client.on("load", () => {
-                assert.equal(CLIENT_STATES.offline, client.state);
+            client.on("init", () => {
+                assert.equal(CLIENT_STATES.unauthorized, client.state);
                 client.signIn("test", "fail").then(res => {
                 }, err => {
-                    assert.equal(CLIENT_STATES.offline, client.state);
+                    assert.equal(CLIENT_STATES.unauthorized, client.state);
                     done();
                 });
-            });
-        });
-    });
-    describe("openWS", function () {
-        beforeEach(function () {
-            localStorage.clear();
-        });
-        it("should throw error when state not 'http'", function (done) {
-            const client = new BlankClient();
-            assert.throws(() => {
-                client.openWS();
-            }, /please wait for initialization/);
-            client.on("load", () => {
-                assert.throws(() => {
-                    client.openWS();
-                }, /need to sign in first/);
-                done();
-            });
-        });
-        it("should emit 'wsopen' event when websocket connection opens", function (done) {
-            localStorage.setItem(TOKEN_LS_KEY, VALID_TOKEN);
-            const client = new BlankClient("http://localhost:8085");
-            client.on("load", () => {
-                client.signIn("test", "ok")
-                    .then(() => {
-                        client.openWS();
-                    });
-            });
-            client.on("wsopen", () => {
-                done();
             });
         });
     });

@@ -13,16 +13,18 @@ export default class BlankClient extends EventEmitter {
         this._wsClient.onopen = this.__onWSOpen.bind(this);
         this._wsClient.onerror = this.__onWSError.bind(this);
         this._wsClient.onclose = this.__onWSClose.bind(this);
+        this._ws = ws;
         this.state = CLIENT_STATES.authorization;
 
         this.accessTokenProvider = new AccessTokenProvider(blankUri);
         this.accessTokenProvider.get()
             .then(token => {
                 if (token) {
-                    ws ? this.openWS() : this.__setState(CLIENT_STATES.ready);
+                    this._ws ? this.__openWS() : this.__setState(CLIENT_STATES.ready);
                 } else {
-                    this.__setState(CLIENT_STATES.notAuthorized);
+                    this.__setState(CLIENT_STATES.unauthorized);
                 }
+                this.emit("init");
             });
     }
 
@@ -48,10 +50,12 @@ export default class BlankClient extends EventEmitter {
             })
             .then(data => {
                 this._accessToken = data.access_token;
-                this.state = CLIENT_STATES.http;
+                this.accessTokenProvider.set(data.access_token);
                 cb(null, data.access_token);
+                this._ws ? this.__openWS() : this.__setState(CLIENT_STATES.ready);
             })
             .catch(err => {
+                this.__setState(CLIENT_STATES.unauthorized);
                 cb(err, null);
             });
 
@@ -62,14 +66,12 @@ export default class BlankClient extends EventEmitter {
 
     }
 
-    openWS() {
-        if (this.state === CLIENT_STATES.init) { throw new Error("please wait for initialization"); }
-        if (this.state === CLIENT_STATES.offline) { throw new Error("need to sign in first"); }
-        if (this.state === CLIENT_STATES.online) { return; }
+    __openWS() {
+        this.__setState(CLIENT_STATES.wsConnecting);
         const uri = (this._blankUri ?
             this._blankUri.replace(/^http/, "ws") :
-            (location.protocol === "https:" ? "wss:" : "ws:") + "//" + location.host) +
-            `/wamp?access_token=${encodeURIComponent(this._accessToken)}`;
+            (location.protocol === "https:" ? "wss:" : "ws:") + "//" + location.host) + location.pathname +
+            `wamp?access_token=${encodeURIComponent(this._accessToken)}`;
         this._wsClient.open(uri);
     }
 
