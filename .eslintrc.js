@@ -28,5 +28,17 @@ module.exports = {
             "error",
             "always-multiline"
         ],
+        "no-console": [
+            "error",
+            {
+                "allow": [
+                    "log",
+                    "info",
+                    "warn",
+                    "error",
+                    "debug"
+                ]
+            }
+        ],
     }
 };

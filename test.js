@@ -1,6 +1,7 @@
 var WebpackDevServer = require("webpack-dev-server");
 var webpack = require("webpack");
 var path = require("path");
+var url = require("url");
 var express = require("express");
 var exec = require("child_process").exec;
 var chokidar = require("chokidar");
@@ -37,6 +38,9 @@ watcher.on("all", function () {
     exec("./node_modules/.bin/babel src --out-dir lib", (e) => {
         console.log(`Babel ${e ? "error:" + e : "done"}`);
     });
+    exec("./node_modules/.bin/babel src --out-dir ../blank-web-app/node_modules/blank-web-sdk/lib", (e) => {
+        console.log(`Babel 2 ${e ? "error:" + e : "done"}`);
+    });
 });
 
 var compiler = webpack(config);
@@ -60,6 +64,10 @@ crossOriginApp.get("/sso-frame", function (req, res) {
     res.send(getFrameHtml());
 });
 crossOriginApp.post("/login", multipart.array(), signIn);
+crossOriginApp.get("/check-jwt", (req, res) => {
+    console.log("TOKEN:", req.get("Authorization"));
+    res.json({ valid: false });
+});
 crossOriginServer.on("request", crossOriginApp);
 const crossOriginPort = 8085;
 crossOriginServer.listen(crossOriginPort, function () {

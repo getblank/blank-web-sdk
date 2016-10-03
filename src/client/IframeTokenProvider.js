@@ -32,7 +32,11 @@ export default class AccessTokenProvider {
         const {promise, cb} = doubleApi(_cb);
         switch (this.store) {
             case "ls":
-                localStorage.setItem(TOKEN_LS_KEY, token);
+                if (token) {
+                    localStorage.setItem(TOKEN_LS_KEY, token);
+                } else {
+                    localStorage.removeItem(TOKEN_LS_KEY);
+                }
                 cb(null);
                 break;
         }
@@ -41,9 +45,14 @@ export default class AccessTokenProvider {
 
     __validateToken(token) {
         if (token) {
-            const tokenInfo = decodeToken(token);
-            if (tokenInfo.exp > Math.floor(Date.now() / 1000)) {
-                return token;
+            try {
+                const tokenInfo = decodeToken(token);
+                if (tokenInfo.exp > Math.floor(Date.now() / 1000)) {
+                    return token;
+                }
+            } catch (e) {
+                console.log("Invalid token in localStorage, will be cleared");
+                localStorage.removeItem(TOKEN_LS_KEY);
             }
         }
         return null;

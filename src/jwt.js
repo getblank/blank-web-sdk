@@ -20,17 +20,21 @@ export function decodeToken(token, options = {}) {
     }
 }
 
-export function checkToken(token, serverUri = "") {
-    return fetch(`${serverUri}/check-jwt`)
+export function isTokenInvalid(token, serverUri = "") {
+    return fetch(`${serverUri}/check-jwt`, {
+        method: "POST",
+        headers: {
+            Authorization: token,
+        },
+    })
         .then(response => {
             if (response.status >= 200 && response.status < 300) {
                 return response.json();
             }
         })
         .then(data => {
-            if (data && data.valid) {
+            if (data && data.valid === false) {
                 return true;
             }
-            return false;
         });
 }

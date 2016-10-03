@@ -34,24 +34,7 @@ export default class WSClient {
         this._heartBeat = heartBeat;
         this._stringMsgTypes = stringMsgTypes;
         this._callSequence = 0;
-        //Outbound subscriptions (from THIS to SERVER)
-        this._eventHandlers = {};
-        this._subscribedHandlers = {};
-        this._subscribeErrorHandlers = {};
-        //Inbound subscriptions (from SERVER to THIS)
-        this._subUris = {};
-        //Outbound RPC
-        this._callResponseHandlers = {};
-        //Inbound RPC
-        this._callRequestHandlers = {};
-        //HB
-        this._heartBeatHandlers = {};
         this._heartBeatInterval = 5 * 1000;
-        //WS handlers
-        this._wsOpenedHandler = this._wsOpenedHandler.bind(this);
-        this._wsClosedHandler = this._wsClosedHandler.bind(this);
-        this._wsErrorHandler = this._wsErrorHandler.bind(this);
-        this._wsMessageHandler = this._wsMessageHandler.bind(this);
         //Public API
         this.open = this.connect = this.connect.bind(this);
         this.close = this.close.bind(this);
@@ -74,6 +57,34 @@ export default class WSClient {
         });
     }
 
+    __resetHandlers() {
+        //Outbound subscriptions (from THIS to SERVER)
+        this._eventHandlers = {};
+        this._subscribedHandlers = {};
+        this._subscribeErrorHandlers = {};
+        //Inbound subscriptions (from SERVER to THIS)
+        this._subUris = {};
+        this._callResponseHandlers = {};
+        this._callRequestHandlers = {};
+        this._heartBeatHandlers = {};
+        //Outbound RPC
+        this._callResponseHandlers = {};
+        //Inbound RPC
+        this._callRequestHandlers = {};
+        //HB
+        this._heartBeatHandlers = {};
+    }
+
+    __resetWS() {
+        if (this._wsClient) {
+            this._wsClient.onopen = null;
+            this._wsClient.onclose = null;
+            this._wsClient.onmessage = null;
+            this._wsClient.onerror = null;
+            this._wsClient.close();
+        }
+    }
+
     /**
      *
      * @param serverUrl - адрес сервера
@@ -81,27 +92,27 @@ export default class WSClient {
      * @private
      */
     connect(serverUrl, cb) {
-        if (this._wsClient && this._wsClient.readyState !== wsStates.CLOSED) {
-            throw new Error("WebSocket not closed. Close WebSocket and try again. To close WebSocket use function \"close()\"");
-        }
+        this.__resetHandlers();
+        this.__resetWS();
+        // if (this._wsClient && this._wsClient.readyState !== wsStates.CLOSED) {
+        //     throw new Error("WebSocket not closed. Close WebSocket and try again. To close WebSocket use function \"close()\"");
+        // }
         if (!/^(wss?:\/\/).+/.test(serverUrl)) {
             throw new Error("Incorrect server url: " + serverUrl);
         }
         let Client = typeof WebSocket === "undefined" ? this.WebSocket : WebSocket;
         this._serverUrl = serverUrl;
         this._wsClient = new Client(serverUrl);
-        this._wsClient.onopen = this._wsOpenedHandler;
-        this._wsClient.onclose = this._wsClosedHandler;
-        this._wsClient.onmessage = this._wsMessageHandler;
-        this._wsClient.onerror = this._wsErrorHandler;
+        this._wsClient.onopen = this._wsOpenedHandler.bind(this);
+        this._wsClient.onclose = this._wsClosedHandler.bind(this);
+        this._wsClient.onmessage = this._wsMessageHandler.bind(this);
+        this._wsClient.onerror = this._wsErrorHandler.bind(this);
         this._connectHandler = cb;
     }
 
     close() {
-        if (this._wsClient) {
-            this._closedByApplication = true;
-            this._wsClient.close();
-        }
+        clearTimeout(this._reconnectTimer);
+        this.__resetWS();
     }
 
     /**
@@ -289,18 +300,8 @@ export default class WSClient {
 
     _wsClosedHandler(closeEvent) {
         clearInterval(this._hbInterval);
-        if (!this._closedByApplication) {
-            setTimeout(this._startReconnect.bind(this), helpers.getRandom(2, 4) * 1000);
-        }
+        this._reconnectTimer = setTimeout(this._startReconnect.bind(this), helpers.getRandom(4, 8) * 1000);
 
-        this._closedByApplication = false;
-        this._eventHandlers = {};
-        this._subscribedHandlers = {};
-        this._subscribeErrorHandlers = {};
-        this._subUris = {};
-        this._callResponseHandlers = {};
-        this._callRequestHandlers = {};
-        this._heartBeatHandlers = {};
         if (typeof this.onclose === "function") {
             this.onclose(closeEvent);
         }
@@ -315,35 +316,32 @@ export default class WSClient {
     }
 
     _startReconnect() {
-        var self = this;
-        if (self._wsClient && self._wsClient.readyState === wsStates.CLOSED) {
-            self.connect.call(self, self._serverUrl);
+        if (this._wsClient && this._wsClient.readyState === wsStates.CLOSED) {
+            this.connect.call(this, this._serverUrl);
         }
     }
 
     _startHeartbeat() {
-        var self = this;
         var hbCount = 0,
             hbCounter = 0;
-        self._hbInterval = setInterval(function () {
-            if (!self._wsClient || self._wsClient.readyState !== wsStates.OPEN) {
-                clearInterval(self._hbInterval);
+        this._hbInterval = setInterval(() => {
+            if (!this._wsClient || this._wsClient.readyState !== wsStates.OPEN) {
+                clearInterval(this._hbInterval);
                 return;
             }
-            self._sendHeartbeat.call(self, hbCount++, function () {
+            this._sendHeartbeat.call(this, hbCount++, function () {
                 hbCounter = 0;
             });
             hbCounter++;
             if (hbCounter > 5) {
                 console.warn("Ping timeout, reconnecting...");
-                self.close();
+                this.close();
             }
-        }, self._heartBeatInterval);
+        }, this._heartBeatInterval);
     }
 
     _sendHeartbeat(hbNumber, cb) {
-        var self = this;
-        self._heartBeatHandlers[hbNumber] = cb;
-        self._wsClient.send(JSON.stringify([(self._stringMsgTypes ? "HB" : msgTypes.HB), hbNumber]));
+        this._heartBeatHandlers[hbNumber] = cb;
+        this._wsClient.send(JSON.stringify([(this._stringMsgTypes ? "HB" : msgTypes.HB), hbNumber]));
     }
 }
