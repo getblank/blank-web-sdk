@@ -24,7 +24,7 @@ export function isTokenInvalid(token, serverUri = "") {
     return fetch(`${serverUri}/check-jwt`, {
         method: "POST",
         headers: {
-            Authorization: token,
+            Authorization: `Bearer ${token}`,
         },
     })
         .then(response => {
