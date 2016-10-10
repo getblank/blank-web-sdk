@@ -83,10 +83,14 @@ export default class BlankClient extends EventEmitter {
 
     __openWS() {
         this.__setState(CLIENT_STATES.wsConnecting);
-        const uri = (this._blankUri ?
-            this._blankUri.replace(/^http/, "ws") :
-            (location.protocol === "https:" ? "wss:" : "ws:") + "//" + location.host) + location.pathname +
-            `wamp?access_token=${encodeURIComponent(this._accessToken)}`;
+        let uri = this._blankUri ?
+            this._blankUri.replace(/^http/, "ws")
+            :
+            (location.protocol === "https:" ? "wss:" : "ws:") + "//" + location.host + location.pathname;
+        if (uri[uri.length - 1] !== "/") {
+            uri += "/";
+        }
+        uri += `wamp?access_token=${encodeURIComponent(this._accessToken)}`;
         this._wsClient.open(uri);
     }
 
@@ -111,7 +115,7 @@ export default class BlankClient extends EventEmitter {
         this.state = state;
         try {
             this.emit("change", state, prev);
-        } catch (e) {}
+        } catch (e) { }
     }
 
     __reset() {
