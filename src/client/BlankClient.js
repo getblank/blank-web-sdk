@@ -9,7 +9,12 @@ import IframeTokenProvider from "./IframeTokenProvider";
 export default class BlankClient extends EventEmitter {
     constructor(blankUri = "", ws = true) {
         super();
-        this._blankUri = process.env.WS || blankUri;
+        this._blankUri = process.env.WS ||
+            blankUri ||
+            (location.protocol + "//" + location.host + location.pathname);
+        if (this._blankUri[this._blankUri.length - 1] !== "/") {
+            this._blankUri += "/";
+        }
         this._wsClient = new WSClient();
         this._wsClient.onopen = this.__onWSOpen.bind(this);
         this._wsClient.onerror = this.__onWSError.bind(this);
@@ -53,7 +58,7 @@ export default class BlankClient extends EventEmitter {
         formData.append("password", password);
 
         let response;
-        fetch(`${this._blankUri}/login`, {
+        fetch(`${this._blankUri}login`, {
             method: "POST",
             body: formData,
         })
@@ -88,13 +93,7 @@ export default class BlankClient extends EventEmitter {
 
     __openWS() {
         this.__setState(CLIENT_STATES.wsConnecting);
-        let uri = this._blankUri ?
-            this._blankUri.replace(/^http/, "ws")
-            :
-            (location.protocol === "https:" ? "wss:" : "ws:") + "//" + location.host + location.pathname;
-        if (uri[uri.length - 1] !== "/") {
-            uri += "/";
-        }
+        let uri = this._blankUri.replace(/^http/, "ws");
         uri += `wamp?access_token=${encodeURIComponent(this._accessToken)}`;
         this._wsClient.open(uri);
     }
