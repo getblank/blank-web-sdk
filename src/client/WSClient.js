@@ -94,9 +94,7 @@ export default class WSClient {
     connect(serverUrl, cb) {
         this.__resetHandlers();
         this.__resetWS();
-        // if (this._wsClient && this._wsClient.readyState !== wsStates.CLOSED) {
-        //     throw new Error("WebSocket not closed. Close WebSocket and try again. To close WebSocket use function \"close()\"");
-        // }
+
         if (!/^(wss?:\/\/).+/.test(serverUrl)) {
             throw new Error("Incorrect server url: " + serverUrl);
         }
@@ -317,7 +315,7 @@ export default class WSClient {
 
     _startReconnect() {
         if (this._wsClient && this._wsClient.readyState === wsStates.CLOSED) {
-            this.connect.call(this, this._serverUrl);
+            this.connect(this._serverUrl);
         }
     }
 
@@ -336,6 +334,7 @@ export default class WSClient {
             if (hbCounter > 5) {
                 console.warn("Ping timeout, reconnecting...");
                 this.close();
+                this.connect(this._serverUrl);
             }
         }, this._heartBeatInterval);
     }
