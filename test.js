@@ -41,6 +41,9 @@ watcher.on("all", function () {
     exec("./node_modules/.bin/babel src --out-dir ../blank-web-app/node_modules/blank-web-sdk/lib", (e) => {
         console.log(`Babel 2 ${e ? "error:" + e : "done"}`);
     });
+    exec("./node_modules/.bin/babel src --out-dir ../bf-config/hugo/src/node_modules/blank-web-sdk/lib", (e) => {
+        console.log(`Babel 2 ${e ? "error:" + e : "done"}`);
+    });
 });
 
 var compiler = webpack(config);
