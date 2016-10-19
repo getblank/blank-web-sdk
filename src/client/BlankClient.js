@@ -19,9 +19,9 @@ export default class BlankClient extends EventEmitter {
 
 
         this.accessTokenProvider = this.__isSameOrigin(this._blankUri) ?
-            new LsTokenProvider(blankUri)
+            new LsTokenProvider()
             :
-            new IframeTokenProvider(blankUri);
+            new IframeTokenProvider(this._blankUri);
         this.accessTokenProvider.on("change", (token) => {
             // console.log("TOKEN UPDATE:", token);
             this.__setToken(token);

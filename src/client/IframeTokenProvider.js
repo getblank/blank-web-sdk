@@ -73,7 +73,7 @@ export default class IframeTokenProvider extends BaseTokenProvider {
             _cb();
         });
         window.addEventListener("message", event => {
-            console.log("EVENT:", event.origin, event.data);
+            // console.log("EVENT:", event.origin, event.data);
             if (event.origin !== this._blankUri || event.data == null) { return; }
 
             if (event.data.requestId) {

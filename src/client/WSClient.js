@@ -76,6 +76,7 @@ export default class WSClient {
     }
 
     __resetWS() {
+        clearInterval(this._hbInterval);
         if (this._wsClient) {
             this._wsClient.onopen = null;
             this._wsClient.onclose = null;
