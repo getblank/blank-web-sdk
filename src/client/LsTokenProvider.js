@@ -5,7 +5,7 @@ import BaseTokenProvider from "./BaseTokenProvider";
 export default class LsTokenProvider extends BaseTokenProvider {
     constructor() {
         super();
-        window.addEventListener("storage", function (e) {
+        window.addEventListener("storage", e => {
             if (e.key === TOKEN_LS_KEY) {
                 this.emit("change", localStorage.getItem(TOKEN_LS_KEY));
             }
