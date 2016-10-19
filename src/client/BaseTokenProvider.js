@@ -1,6 +1,11 @@
-import {decodeToken} from "../jwt";
+import { decodeToken } from "../jwt";
+import EventEmitter from "../utils/events";
 
-export default class BaseTokenProvider {
+export default class BaseTokenProvider extends EventEmitter {
+    constructor() {
+        super();
+    }
+
     __isValidToken(token) {
         if (token) {
             try {

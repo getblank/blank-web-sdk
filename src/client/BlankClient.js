@@ -1,8 +1,8 @@
 import WSClient from "./WSClient";
 import EventEmitter from "../utils/events";
-import {isTokenInvalid, decodeToken} from "../jwt";
+import { isTokenInvalid, decodeToken } from "../jwt";
 import doubleApi from "../doubleApi";
-import {TOKEN_LS_KEY, CLIENT_STATES} from "../const";
+import { CLIENT_STATES } from "../const";
 import LsTokenProvider from "./LsTokenProvider";
 import IframeTokenProvider from "./IframeTokenProvider";
 
@@ -17,15 +17,18 @@ export default class BlankClient extends EventEmitter {
         this._ws = ws;
         this.state = CLIENT_STATES.authorization;
 
-        this.accessTokenProvider = new LsTokenProvider(blankUri);
+
+        this.accessTokenProvider = this.__isSameOrigin(this._blankUri) ?
+            new LsTokenProvider(blankUri)
+            :
+            new IframeTokenProvider(blankUri);
+        this.accessTokenProvider.on("change", (token) => {
+            // console.log("TOKEN UPDATE:", token);
+            this.__setToken(token);
+        });
         const initPromise = this.accessTokenProvider.get()
             .then(token => {
-                this._accessToken = token;
-                if (token) {
-                    this._ws ? this.__openWS() : this.__setState(CLIENT_STATES.ready);
-                } else {
-                    this.__setState(CLIENT_STATES.unauthorized);
-                }
+                this.__setToken(token);
                 this.emit("init");
             });
         this.init = () => initPromise;
@@ -36,7 +39,9 @@ export default class BlankClient extends EventEmitter {
 
     getTokenInfo() {
         if (this._accessToken == null) { return null; }
-        return decodeToken(this._accessToken);
+        const tokenInfo = decodeToken(this._accessToken);
+        tokenInfo.RAW = this._accessToken;
+        return tokenInfo;
     }
 
     signIn(login, password, _cb) {
@@ -94,6 +99,16 @@ export default class BlankClient extends EventEmitter {
         this._wsClient.open(uri);
     }
 
+    __isSameOrigin(url) {
+        if (!url) { return true; }
+        const loc = window.location,
+            a = document.createElement("a");
+        a.href = url;
+        return a.hostname == loc.hostname &&
+            a.port == loc.port &&
+            a.protocol == loc.protocol;
+    }
+
     __checkAccessToken() {
         const token = this._accessToken;
         if (this._accessToken) {
@@ -116,6 +131,15 @@ export default class BlankClient extends EventEmitter {
         try {
             this.emit("change", state, prev);
         } catch (e) { }
+    }
+
+    __setToken(token) {
+        this._accessToken = token;
+        if (token) {
+            this._ws ? this.__openWS() : this.__setState(CLIENT_STATES.ready);
+        } else {
+            this.__setState(CLIENT_STATES.unauthorized);
+        }
     }
 
     __reset() {

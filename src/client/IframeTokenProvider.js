@@ -1,74 +1,91 @@
 import doubleApi from "../doubleApi";
-import {TOKEN_LS_KEY} from "../const";
-import {decodeToken} from "../jwt";
+import BaseTokenProvider from "./BaseTokenProvider";
 
-export default class AccessTokenProvider {
+export default class IframeTokenProvider extends BaseTokenProvider {
     constructor(uri) {
-        this.store = "ls";
-        if (uri) {
-            this._blankUri = uri;
-            this.store = "iframe";
-            this.__prepareFrame;
-        }
+        super();
+        this._mID = 0;
+        this._blankUri = uri;
+        this._requests = {};
+        const loadFramePromise = new Promise(resolve => {
+            this.__prepareFrame(resolve);
+        });
+        this._waitForLoad = () => loadFramePromise;
     }
 
     get(_cb) {
         const {promise, cb} = doubleApi(_cb);
-        let token;
-        switch (this.store) {
-            case "ls":
-                token = localStorage.getItem(TOKEN_LS_KEY) || null;
-                cb(null, this.__validateToken(token));
-                break;
-            case "iframe":
-                token = localStorage.getItem(TOKEN_LS_KEY) || null;
-                cb(null, this.__validateToken(token));
-                break;
-        }
+        this._waitForLoad()
+            .then(() => {
+                return this.__rpc({ method: "GET" });
+            })
+            .then(token => {
+                if (this.__isValidToken(token)) {
+                    cb(null, token);
+                } else {
+                    console.log("Invalid token in iframe storage, will be cleared");
+                    this.__rpc({ method: "REMOVE" });
+                    cb(null, null);
+                }
+            });
         return promise;
     }
 
     set(token, _cb) {
         const {promise, cb} = doubleApi(_cb);
-        switch (this.store) {
-            case "ls":
-                if (token) {
-                    localStorage.setItem(TOKEN_LS_KEY, token);
-                } else {
-                    localStorage.removeItem(TOKEN_LS_KEY);
-                }
-                cb(null);
-                break;
-        }
+        this._waitForLoad()
+            .then(() => {
+                return this.__rpc({ method: "SET", token });
+            })
+            .then(() => {
+                cb(null, null);
+            });
         return promise;
     }
 
-    __validateToken(token) {
-        if (token) {
-            try {
-                const tokenInfo = decodeToken(token);
-                if (tokenInfo.exp > Math.floor(Date.now() / 1000)) {
-                    return token;
-                }
-            } catch (e) {
-                console.log("Invalid token in localStorage, will be cleared");
-                localStorage.removeItem(TOKEN_LS_KEY);
-            }
-        }
-        return null;
+    __getMessageId() {
+        return "a" + (++this._mID);
     }
 
-    __prepareFrame(cb) {
-        const frame = this.ifrm = document.createElement("iframe");
+    __rpc(data) {
+        return new Promise((resolve, reject) => {
+            data.id = this.__getMessageId();
+            const timer = setTimeout(() => {
+                reject("timeout");
+            }, 2000);
+            this._requests[data.id] = (_d) => {
+                clearTimeout(timer);
+                delete this._requests[data.id];
+                resolve(_d);
+            };
+            this.iframeWindow.postMessage(data, this._blankUri);
+        });
+    }
+
+    __prepareFrame(_cb) {
+        const frame = document.createElement("iframe");
         frame.style.width = "0";
         frame.style.height = "0";
-        frame.setAttribute("src", this._blankUri + "/sso-frame");
+        frame.setAttribute("src", this._blankUri + "/hooks/cd/frame");
         frame.addEventListener("load", () => {
-            const w = frame.contentWindow;
-            w.postMessage("", this._blankUri);
+            this.iframeWindow = frame.contentWindow;
+            this.iframeWindow.postMessage({ method: "SUBSCRIBE", id: this.__getMessageId() }, this._blankUri);
+            _cb();
         });
         window.addEventListener("message", event => {
-            if (event.origin !== this._blankUri) { return; }
+            console.log("EVENT:", event.origin, event.data);
+            if (event.origin !== this._blankUri || event.data == null) { return; }
+
+            if (event.data.requestId) {
+                const requestCb = this._requests[event.data.requestId];
+                if (typeof requestCb === "function") {
+                    requestCb(event.data.result);
+                }
+            } else {
+                if (typeof event.data.token !== "undefined") {
+                    this.emit("change", event.data.token);
+                }
+            }
         }, false);
         document.body.appendChild(frame);
     }

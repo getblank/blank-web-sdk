@@ -1,8 +1,17 @@
 import doubleApi from "../doubleApi";
-import {TOKEN_LS_KEY} from "../const";
+import { TOKEN_LS_KEY } from "../const";
 import BaseTokenProvider from "./BaseTokenProvider";
 
-export default class AccessTokenProvider extends BaseTokenProvider {
+export default class LsTokenProvider extends BaseTokenProvider {
+    constructor() {
+        super();
+        window.addEventListener("storage", function (e) {
+            if (e.key === TOKEN_LS_KEY) {
+                this.emit("change", localStorage.getItem(TOKEN_LS_KEY));
+            }
+        });
+    }
+
     get(_cb) {
         const {promise, cb} = doubleApi(_cb);
         const token = localStorage.getItem(TOKEN_LS_KEY) || null;
