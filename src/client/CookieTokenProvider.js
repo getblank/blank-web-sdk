@@ -45,12 +45,11 @@ function createCookie(name, value, expiresIn) {
     if (expiresIn) {
         expires = "; expires=" + (expiresIn === -1 ? "Thu, 01 Jan 1970 00:00:01 GMT" : new Date(expiresIn * 1000).toGMTString());
     }
-    cookie += expires + "; path=/";
 
     const hostname = document.location.hostname.split(".");
     for (let i = hostname.length - 1; i >= 0; i--) {
         const h = hostname.slice(i).join(".");
-        document.cookie = cookie + "; domain=." + h + ";";
+        document.cookie = `${cookie}${expires}; path=/; domain=.${h};`;
         //If we erasing cookie, it will be erased for all subdomains
         if (document.cookie.indexOf(cookie) > -1) {
             return;
