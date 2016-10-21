@@ -48,7 +48,7 @@ function createCookie(name, value, expiresIn) {
     cookie += expires + "; path=/";
 
     const hostname = document.location.hostname.split(".");
-    for (let i = hostname.length - 2; i >= 0; i--) {
+    for (let i = hostname.length - 1; i >= 0; i--) {
         const h = hostname.slice(i).join(".");
         document.cookie = cookie + "; domain=." + h + ";";
         //If we erasing cookie, it will be erased for all subdomains
