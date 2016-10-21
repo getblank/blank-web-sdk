@@ -5,6 +5,9 @@ import doubleApi from "../doubleApi";
 import { CLIENT_STATES } from "../const";
 import LsTokenProvider from "./LsTokenProvider";
 import IframeTokenProvider from "./IframeTokenProvider";
+import CookieTokenProvider from "./CookieTokenProvider";
+
+const providers = { LsTokenProvider, IframeTokenProvider, CookieTokenProvider };
 
 export default class BlankClient extends EventEmitter {
     constructor(blankUri = "", ws = true) {
@@ -22,11 +25,18 @@ export default class BlankClient extends EventEmitter {
         this._ws = ws;
         this.state = CLIENT_STATES.authorization;
 
+        for (let pName of Object.keys(providers)) {
+            const provider = new providers[pName](this._blankUri);
+            if (provider.canIUse()) {
+                this.accessTokenProvider = provider;
+                console.log("Selected token provider:", pName);
+                break;
+            }
+        }
 
-        this.accessTokenProvider = this.__isSameOrigin(this._blankUri) ?
-            new LsTokenProvider()
-            :
-            new IframeTokenProvider(this._blankUri);
+        if (this.accessTokenProvider == null) {
+            throw new Error("Cannot find usable token provider!");
+        }
         this.accessTokenProvider.on("change", (token) => {
             // console.log("TOKEN UPDATE:", token);
             this.__setToken(token);
@@ -96,16 +106,6 @@ export default class BlankClient extends EventEmitter {
         let uri = this._blankUri.replace(/^http/, "ws");
         uri += `wamp?access_token=${encodeURIComponent(this._accessToken)}`;
         this._wsClient.open(uri);
-    }
-
-    __isSameOrigin(url) {
-        if (!url) { return true; }
-        const loc = window.location,
-            a = document.createElement("a");
-        a.href = url;
-        return a.hostname == loc.hostname &&
-            a.port == loc.port &&
-            a.protocol == loc.protocol;
     }
 
     __checkAccessToken() {

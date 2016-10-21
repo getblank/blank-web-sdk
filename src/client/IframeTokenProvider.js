@@ -13,6 +13,10 @@ export default class IframeTokenProvider extends BaseTokenProvider {
         this._waitForLoad = () => loadFramePromise;
     }
 
+    canIUse() {
+        return !/^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    }
+
     get(_cb) {
         const {promise, cb} = doubleApi(_cb);
         this._waitForLoad()
@@ -66,7 +70,7 @@ export default class IframeTokenProvider extends BaseTokenProvider {
         const frame = document.createElement("iframe");
         frame.style.width = "0";
         frame.style.height = "0";
-        frame.setAttribute("src", this._blankUri + "/hooks/cd/frame");
+        frame.setAttribute("src", this._blankUri + "hooks/cd/frame");
         frame.addEventListener("load", () => {
             this.iframeWindow = frame.contentWindow;
             this.iframeWindow.postMessage({ method: "SUBSCRIBE", id: this.__getMessageId() }, this._blankUri);

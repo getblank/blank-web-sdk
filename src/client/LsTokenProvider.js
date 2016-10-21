@@ -3,13 +3,28 @@ import { TOKEN_LS_KEY } from "../const";
 import BaseTokenProvider from "./BaseTokenProvider";
 
 export default class LsTokenProvider extends BaseTokenProvider {
-    constructor() {
+    constructor(uri) {
         super();
+        this._blankUri = uri;
         window.addEventListener("storage", e => {
             if (e.key === TOKEN_LS_KEY) {
                 this.emit("change", localStorage.getItem(TOKEN_LS_KEY));
             }
         });
+    }
+
+    canIUse() {
+        return this.__isSameOrigin(this._blankUri) && !/^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    }
+
+    __isSameOrigin(url) {
+        if (!url) { return true; }
+        const loc = window.location,
+            a = document.createElement("a");
+        a.href = url;
+        return a.hostname == loc.hostname &&
+            a.port == loc.port &&
+            a.protocol == loc.protocol;
     }
 
     get(_cb) {
@@ -34,20 +49,5 @@ export default class LsTokenProvider extends BaseTokenProvider {
         }
         cb(null);
         return promise;
-    }
-
-    __prepareFrame(cb) {
-        const frame = this.ifrm = document.createElement("iframe");
-        frame.style.width = "0";
-        frame.style.height = "0";
-        frame.setAttribute("src", this._blankUri + "/sso-frame");
-        frame.addEventListener("load", () => {
-            const w = frame.contentWindow;
-            w.postMessage("", this._blankUri);
-        });
-        window.addEventListener("message", event => {
-            if (event.origin !== this._blankUri) { return; }
-        }, false);
-        document.body.appendChild(frame);
     }
 }
