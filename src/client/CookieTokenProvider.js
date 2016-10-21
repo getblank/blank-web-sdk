@@ -41,17 +41,17 @@ export default class CookieTokenProvider extends BaseTokenProvider {
 
 function createCookie(name, value, expiresIn) {
     let cookie = `${name}=${value}`,
+        deleting = expiresIn === -1,
         expires = "";
     if (expiresIn) {
-        expires = "; expires=" + (expiresIn === -1 ? "Thu, 01 Jan 1970 00:00:01 GMT" : new Date(expiresIn * 1000).toGMTString());
+        expires = "; expires=" + new Date(deleting ? 0 : expiresIn * 1000).toGMTString();
     }
 
     const hostname = document.location.hostname.split(".");
     for (let i = hostname.length - 1; i >= 0; i--) {
         const h = hostname.slice(i).join(".");
         document.cookie = `${cookie}${expires}; path=/; domain=.${h};`;
-        //If we erasing cookie, it will be erased for all subdomains
-        if (document.cookie.indexOf(cookie) > -1) {
+        if (!deleting && document.cookie.indexOf(cookie) > -1) {
             return;
         }
     }
