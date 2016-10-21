@@ -55,7 +55,7 @@ export default class IframeTokenProvider extends BaseTokenProvider {
         return new Promise((resolve, reject) => {
             data.id = this.__getMessageId();
             const timer = setTimeout(() => {
-                reject("timeout");
+                reject("Iframe RPC timeout");
             }, 2000);
             this._requests[data.id] = (_d) => {
                 clearTimeout(timer);
@@ -78,7 +78,7 @@ export default class IframeTokenProvider extends BaseTokenProvider {
         });
         window.addEventListener("message", event => {
             // console.log("EVENT:", event.origin, event.data);
-            if (event.origin !== this._blankUri || event.data == null) { return; }
+            if (this._blankUri.indexOf(event.origin) !== 0 || event.data == null) { return; }
 
             if (event.data.requestId) {
                 const requestCb = this._requests[event.data.requestId];
