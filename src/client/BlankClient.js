@@ -60,7 +60,7 @@ export default class BlankClient extends EventEmitter {
     }
 
     signIn(login, password, _cb) {
-        const {promise, cb} = doubleApi(_cb);
+        const { promise, cb } = doubleApi(_cb);
         this._accessToken = null;
 
         const formData = new FormData();
@@ -71,6 +71,7 @@ export default class BlankClient extends EventEmitter {
         fetch(`${this._blankUri}login`, {
             method: "POST",
             body: formData,
+            credentials: "include",
         })
             .then(_response => {
                 response = _response;
@@ -97,14 +98,30 @@ export default class BlankClient extends EventEmitter {
     }
 
     signOut() {
-        this.__reset();
-        return Promise.resolve();
+        let response;
+        return fetch(`${this._blankUri}logout?key=${this._accessToken}`, {
+            method: "POST",
+        })
+            .then(res => {
+                return res.json();
+            })
+            .then(res => {
+                if (response.status !== 200) {
+                    const error = new Error(res);
+                    error.response = response;
+                    throw error;
+                }
+
+                this.__reset();
+            })
+            .catch(err => {
+                console.log("SIGN OUT ERROR", err);
+            });
     }
 
     __openWS() {
         this.__setState(CLIENT_STATES.wsConnecting);
-        let uri = this._blankUri.replace(/^http/, "ws");
-        uri += `wamp?access_token=${encodeURIComponent(this._accessToken)}`;
+        const uri = this._blankUri.replace(/^http/, "ws") + "wamp";
         this._wsClient.open(uri);
     }
 
