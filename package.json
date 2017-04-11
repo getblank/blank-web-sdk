@@ -1,6 +1,6 @@
 {
   "name": "blank-web-sdk",
-  "version": "0.0.26",
+  "version": "0.0.27",
   "description": "SDK for web applications created with Blank back-end",
   "main": "./lib/index.js",
   "scripts": {
