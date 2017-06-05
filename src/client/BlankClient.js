@@ -53,19 +53,23 @@ export default class BlankClient extends EventEmitter {
     }
 
     getTokenInfo() {
-        if (this._accessToken == null) { return null; }
+        if (this._accessToken == null) {
+            return null;
+        }
+
         const tokenInfo = decodeToken(this._accessToken);
         tokenInfo.RAW = this._accessToken;
         return tokenInfo;
     }
 
-    signIn(login, password, _cb) {
+    signIn(props, _cb) {
         const { promise, cb } = doubleApi(_cb);
         this._accessToken = null;
 
         const formData = new FormData();
-        formData.append("login", login);
-        formData.append("password", password);
+        for (let propName of Object.keys(props)) {
+            formData.append(propName, props[propName]);
+        }
 
         let response;
         fetch(`${this._blankUri}login`, {

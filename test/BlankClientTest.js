@@ -83,7 +83,7 @@ describe("BlankClient", function () {
             const client = new BlankClient();
             client.on("init", () => {
                 assert.equal(client.state, CLIENT_STATES.unauthorized);
-                client.signIn("test", "ok").then(res => {
+                client.signIn({ login: "test", password: "ok" }).then(() => {
                     assert.equal(client.state, CLIENT_STATES.wsConnecting);
                     done();
                 });
@@ -93,7 +93,7 @@ describe("BlankClient", function () {
             const client = new BlankClient("", false);
             client.on("init", () => {
                 assert.equal(client.state, CLIENT_STATES.unauthorized);
-                client.signIn("test", "ok").then(res => {
+                client.signIn({ login: "test", password: "ok" }).then(() => {
                     assert.equal(client.state, CLIENT_STATES.ready);
                     done();
                 });
@@ -103,8 +103,8 @@ describe("BlankClient", function () {
             const client = new BlankClient();
             client.on("init", () => {
                 assert.equal(CLIENT_STATES.unauthorized, client.state);
-                client.signIn("test", "fail").then(res => {
-                }, err => {
+                client.signIn({ login: "test", password: "fail" }).catch(() => {
+                }, () => {
                     assert.equal(CLIENT_STATES.unauthorized, client.state);
                     done();
                 });
