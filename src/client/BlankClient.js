@@ -103,10 +103,9 @@ export default class BlankClient extends EventEmitter {
 
     signOut() {
         let response;
-        return fetch(`${this._blankUri}logout?key=${this._accessToken}`, {
-            method: "POST",
-        })
+        return fetch(`${this._blankUri}logout`, { method: "POST", credentials: "include" })
             .then(res => {
+                response = res;
                 return res.json();
             })
             .then(res => {
