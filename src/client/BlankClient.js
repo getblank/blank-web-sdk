@@ -1,13 +1,7 @@
 import WSClient from "./WSClient";
 import EventEmitter from "../utils/events";
-import { isTokenInvalid, decodeToken } from "../jwt";
 import doubleApi from "../doubleApi";
 import { CLIENT_STATES } from "../const";
-import LsTokenProvider from "./LsTokenProvider";
-import IframeTokenProvider from "./IframeTokenProvider";
-import CookieTokenProvider from "./CookieTokenProvider";
-
-const providers = { LsTokenProvider, IframeTokenProvider, CookieTokenProvider };
 
 export default class BlankClient extends EventEmitter {
     constructor(blankUri = "", ws = true) {
@@ -25,41 +19,30 @@ export default class BlankClient extends EventEmitter {
         this._ws = ws;
         this.state = CLIENT_STATES.authorization;
 
-        for (let pName of Object.keys(providers)) {
-            const provider = new providers[pName](this._blankUri);
-            if (provider.canIUse()) {
-                this.accessTokenProvider = provider;
-                console.log("Selected token provider:", pName);
-                break;
-            }
-        }
+        this.init = () => {
+            this.emit("init");
+            return this.getTokenInfo()
+                .then(res => {
+                    if (res) {
+                        this.__openWS();
+                    }
+                });
+        };
 
-        if (this.accessTokenProvider == null) {
-            throw new Error("Cannot find usable token provider!");
-        }
-        this.accessTokenProvider.on("change", (token) => {
-            // console.log("TOKEN UPDATE:", token);
-            this.__setToken(token);
-        });
-        const initPromise = this.accessTokenProvider.get()
-            .then(token => {
-                this.__setToken(token);
-                this.emit("init");
-            });
-        this.init = () => initPromise;
         this.call = this._wsClient.call;
         this.subscribe = this._wsClient.subscribe;
         this.unsubscribe = this._wsClient.unsubscribe;
     }
 
     getTokenInfo() {
-        if (this._accessToken == null) {
-            return null;
+        if (this._user) {
+            return Promise.resolve(this._user);
         }
 
-        const tokenInfo = decodeToken(this._accessToken);
-        tokenInfo.RAW = this._accessToken;
-        return tokenInfo;
+        return this.__checkAccessToken()
+            .then(() => {
+                return this._user;
+            });
     }
 
     signIn(props, _cb) {
@@ -87,8 +70,9 @@ export default class BlankClient extends EventEmitter {
                     error.response = response;
                     throw error;
                 }
-                this._accessToken = data.access_token;
-                this.accessTokenProvider.set(data.access_token);
+
+                this._user = data.user;
+                localStorage.setItem("signedIn", true);
                 cb(null, data.user);
                 this._ws ? this.__openWS() : this.__setState(CLIENT_STATES.ready);
             })
@@ -129,19 +113,26 @@ export default class BlankClient extends EventEmitter {
     }
 
     __checkAccessToken() {
-        const token = this._accessToken;
-        if (this._accessToken) {
-            return isTokenInvalid(token, this._blankUri)
-                .then(invalid => {
-                    if (token !== this._accessToken) { return; }
-                    if (invalid) {
-                        //Invalid token, cleaning up and going offline
-                        console.log("INVALID TOKEN!");
-                        this.__reset();
-                    }
-                });
-        }
-        return Promise.resolve(false);
+        return fetch(`${this._blankUri}check-jwt`, {
+            method: "POST",
+            credentials: "include",
+        })
+        .then(res => {
+            if (res.status !== 200) {
+                this.__reset();
+                return;
+            }
+
+            return res.json();
+        })
+        .then(res => {
+            if (!res) {
+                return;
+            }
+
+            this._user = res.user;
+            return res.user;
+        });
     }
 
     __setState(state) {
@@ -149,11 +140,12 @@ export default class BlankClient extends EventEmitter {
         this.state = state;
         try {
             this.emit("change", state, prev);
-        } catch (e) { }
+        } catch (err) {
+            console.error("__setState error", err);
+        }
     }
 
     __setToken(token) {
-        this._accessToken = token;
         if (token) {
             this._ws ? this.__openWS() : this.__setState(CLIENT_STATES.ready);
         } else {
@@ -162,8 +154,7 @@ export default class BlankClient extends EventEmitter {
     }
 
     __reset() {
-        this._accessToken = null;
-        this.accessTokenProvider.set(null);
+        localStorage.removeItem("signedIn", true);
         this.__setState(CLIENT_STATES.unauthorized);
         this._wsClient.close();
     }
