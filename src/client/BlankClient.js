@@ -126,7 +126,7 @@ export default class BlankClient extends EventEmitter {
             return res.json();
         })
         .then(res => {
-            if (!res) {
+            if (!res || !res.valid) {
                 return;
             }
 
