@@ -35,14 +35,8 @@ export default class BlankClient extends EventEmitter {
     }
 
     getTokenInfo() {
-        if (this._user) {
-            return Promise.resolve(this._user);
-        }
-
         return this.__checkAccessToken()
-            .then(() => {
-                return this._user;
-            });
+            .then(res => res);
     }
 
     signIn(props, _cb) {
@@ -155,6 +149,7 @@ export default class BlankClient extends EventEmitter {
 
     __reset() {
         localStorage.removeItem("signedIn", true);
+        this._user = null;
         this.__setState(CLIENT_STATES.unauthorized);
         this._wsClient.close();
     }
