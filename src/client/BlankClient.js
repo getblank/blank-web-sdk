@@ -111,22 +111,31 @@ export default class BlankClient extends EventEmitter {
             method: "POST",
             credentials: "include",
         })
-        .then(res => {
-            if (res.status !== 200) {
-                this.__reset();
-                return;
-            }
+            .then(res => {
+                if (res.status !== 200) {
+                    if (res.status === 403) {
+                        this.__reset();
+                        return;
+                    }
 
-            return res.json();
-        })
-        .then(res => {
-            if (!res || !res.valid) {
-                return;
-            }
+                    throw new Error(`[__checkAccessToken] error status: ${res.status} ${res.statusText}`);
+                }
 
-            this._user = res.user;
-            return res.user;
-        });
+                return res.json();
+            })
+            .then(res => {
+                if (!res) {
+                    return;
+                }
+
+                if (!res.valid) {
+                    this.__reset();
+                    return;
+                }
+
+                this._user = res.user;
+                return res.user;
+            });
     }
 
     __setState(state) {
@@ -148,7 +157,7 @@ export default class BlankClient extends EventEmitter {
     }
 
     __reset() {
-        localStorage.removeItem("signedIn", true);
+        localStorage.removeItem("signedIn");
         this._user = null;
         this.__setState(CLIENT_STATES.unauthorized);
         this._wsClient.close();

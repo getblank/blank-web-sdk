@@ -13,6 +13,7 @@ const msgTypes = {
     "SUBSCRIBED": 9,
     "SUBSCRIBEERROR": 10,
     "HB": 20,
+    "FORBIDDEN": 403,
 };
 
 const wsStates = {
@@ -99,10 +100,11 @@ export default class WSClient {
         if (!/^(wss?:\/\/).+/.test(serverUrl)) {
             throw new Error("Incorrect server url: " + serverUrl);
         }
+
         let Client = typeof WebSocket === "undefined" ? this.WebSocket : WebSocket;
         this._serverUrl = serverUrl;
         this._wsClient = new Client(serverUrl);
-        this._wsClient.onopen = this._wsOpenedHandler.bind(this);
+        // this._wsClient.onopen = this._wsOpenedHandler.bind(this);
         this._wsClient.onclose = this._wsClosedHandler.bind(this);
         this._wsClient.onmessage = this._wsMessageHandler.bind(this);
         this._wsClient.onerror = this._wsErrorHandler.bind(this);
@@ -124,13 +126,17 @@ export default class WSClient {
         if (!url) {
             throw new Error("invalid args: url");
         }
+
         if (this._wsClient.readyState !== wsStates.OPEN) {
             throw new Error("WebSocket not connected");
         }
-        let cb, promise, data = Array.prototype.slice.call(arguments, 1);
+
+        let cb, promise;
+        const data = Array.prototype.slice.call(arguments, 1);
         if (typeof data[data.length - 1] === "function") {
             cb = data.pop();
         }
+
         ({ promise, cb } = doubleApi(cb));
 
         let callId = ++this._callSequence;
@@ -157,6 +163,7 @@ export default class WSClient {
             if (params) {
                 msg.push(params);
             }
+
             this._wsClient.send(JSON.stringify(msg));
         } else {
             throw new Error("WebSocket not connected");
@@ -201,6 +208,7 @@ export default class WSClient {
         if (typeof uri !== "string" || !uri) {
             throw new Error("Invalid uri, must be non empty string");
         }
+
         if (typeof cb === "function") {
             this._callRequestHandlers[uri] = cb;
         } else {
@@ -226,30 +234,42 @@ export default class WSClient {
         if (typeof msgType === "string" && msgTypes.hasOwnProperty(msgType)) {
             msgType = msgTypes[msgType];
         }
+
         switch (msgType) {
+            case msgTypes.WELCOME:
+                this._wsOpenedHandler(msg);
+                return;
+            case msgTypes.FORBIDDEN:
+                if (typeof this._connectHandler === "function") {
+                    this._connectHandler(new Error("Forbidden"));
+                }
+
+                this._wsErrorHandler(new Error("Forbidden"));
+                this.close();
+                return;
             case msgTypes.EVENT:
                 if (typeof this._eventHandlers[msgId] === "function") {
                     this._eventHandlers[msgId](msgData);
                 }
-                break;
+                return;
             case msgTypes.SUBSCRIBE:
                 this._subUris[msgId] = true;
-                break;
+                return;
             case msgTypes.UNSUBSCRIBE:
                 delete this._subUris[msgId];
-                break;
+                return;
             case msgTypes.SUBSCRIBED:
                 if (typeof this._subscribedHandlers[msgId] === "function") {
                     this._subscribedHandlers[msgId](msgData);
                 }
                 delete this._subscribedHandlers[msgId];
-                break;
+                return;
             case msgTypes.SUBSCRIBEERROR:
                 if (typeof this._subscribeErrorHandlers[msgId] === "function") {
                     this._subscribeErrorHandlers[msgId](msgData);
                 }
                 delete this._subscribeErrorHandlers[msgId];
-                break;
+                return;
             case msgTypes.CALL:
                 {
                     let rpcUri = msgData;
@@ -259,29 +279,31 @@ export default class WSClient {
                         }
                     }
                 }
-                break;
+                return;
             case msgTypes.CALLRESULT:
                 if (typeof this._callResponseHandlers[msgId] === "function") {
                     this._callResponseHandlers[msgId](null, msgData);
                 }
                 delete this._callResponseHandlers[msgId];
-                break;
+                return;
             case msgTypes.CALLERROR:
                 var err = {
                     desc: msgData,
                     details: msg.length > 3 ? msg[3] : null,
                 };
+
                 if (typeof this._callResponseHandlers[msgId] === "function") {
                     this._callResponseHandlers[msgId](err, null);
                 }
                 delete this._callResponseHandlers[msgId];
-                break;
+                return;
             case msgTypes.HB:
                 if (typeof this._heartBeatHandlers[msgId] === "function") {
                     this._heartBeatHandlers[msgId](msgData);
                 }
+
                 delete this._heartBeatHandlers[msgId];
-                break;
+                return;
         }
     }
 
@@ -289,9 +311,11 @@ export default class WSClient {
         if (this._heartBeat) {
             this._startHeartbeat.call(this);
         }
+
         if (typeof this._connectHandler === "function") {
             this._connectHandler();
         }
+
         if (typeof this.onopen === "function") {
             this.onopen(e);
         }
@@ -328,6 +352,7 @@ export default class WSClient {
                 clearInterval(this._hbInterval);
                 return;
             }
+
             this._sendHeartbeat.call(this, hbCount++, function () {
                 hbCounter = 0;
             });
